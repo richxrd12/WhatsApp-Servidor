@@ -4,7 +4,9 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Main {
@@ -40,6 +42,11 @@ public class Main {
                         //Lo añadimos a la lista de usuarios conectados
                         conectados.put("Usuario", cliente); //Hardcodeado
                         System.out.println("Cliente conectado: " + cliente.getInetAddress());
+
+                        /** CONTACTO **/
+
+                        ObjectOutputStream salidaContacto = new ObjectOutputStream(cliente.getOutputStream());
+                        salidaContacto.writeObject(obtenerContactos());
 
                         while (true){
                             //Lógica para guardar los mensajes en el servidor
@@ -220,4 +227,42 @@ public class Main {
             throw new RuntimeException(e);
         }
     }
+
+    public static ArrayList<Usuario> obtenerContactos(){
+        ArrayList<Usuario> usuarios = new ArrayList<>();
+
+        String bd = "whatsapp";
+        String url = "jdbc:mysql://localhost:3306/";
+        String user = "root";
+        String pass = "1234";
+        String driver = "com.mysql.cj.jdbc.Driver";
+        Connection connection;
+
+        final String SELECT_QUERY = "SELECT id, nombre, correo, password FROM usuarios";
+
+        try {
+            Class.forName(driver);
+            connection = DriverManager.getConnection(url+bd, user, pass);
+
+            PreparedStatement preparedStatement = connection.prepareStatement(SELECT_QUERY);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()){
+                usuarios.add(new Usuario(resultSet.getInt("id"), resultSet.getString("nombre"),
+                        resultSet.getString("correo"), resultSet.getString("password")));
+            }
+            return usuarios;
+
+        }catch (Exception e){
+            System.out.println(e);
+            return null;
+        }
+    }
+
+
+
+
+
+
 }
