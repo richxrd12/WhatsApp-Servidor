@@ -6,91 +6,76 @@ import java.net.Socket;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 public class Main {
     public static void main(String[] args) {
-        //Esto es la parte del servidor, hay que mirar como pasarle a x persona
-        //exactamente el mensaje que le vamos a enviar
         final int PORT = 5000;
-
-        //Aquí se guardarán los conectados
         Map<String, Socket> conectados = new HashMap<>();
 
-        try (ServerSocket serverSocket = new ServerSocket(PORT)){
+        System.out.println("Servidor escuchando en el puerto " + PORT);
 
-            System.out.println("Servidor escuchando en el puerto " + PORT);
+        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+            while (true) {
+                Socket cliente = serverSocket.accept(); // acepta cada nueva conexión
+                System.out.println("Cliente conectado: " + cliente.getInetAddress());
 
-            while (true){
-                Socket cliente =  serverSocket.accept();
-
-                //Para recibir el Map con el correo y la contraseña
+                // Crea los flujos de entrada y salida una sola vez por cliente
                 ObjectInputStream entrada = new ObjectInputStream(cliente.getInputStream());
+                ObjectOutputStream salida = new ObjectOutputStream(cliente.getOutputStream());
+
+                // Escuchar y procesar solicitudes
                 Map<String, String> datos = (Map<String, String>) entrada.readObject();
+                String peticion = datos.get("peticion");
 
-                //Se comprueba si se va a logear o si se va a registrar
-                if (datos.get("estado").equals("login")){
-                    boolean loginSuccess = comprobarLogin(datos.get("correo"), datos.get("password"));
-
-                    if (loginSuccess) {
-                        //Si el login es correcto le manda el estado true al usuario y empieza a escuchar para recibir mensajes
-                        System.out.println("El usuario se ha logeado correctamente");
-                        ObjectOutputStream salida = new ObjectOutputStream(cliente.getOutputStream());
-                        salida.writeObject("true");
-
-                        //Lo añadimos a la lista de usuarios conectados
-                        conectados.put("Usuario", cliente); //Hardcodeado
-                        System.out.println("Cliente conectado: " + cliente.getInetAddress());
-
-                        /** CONTACTO **/
-
-                        ObjectOutputStream salidaContacto = new ObjectOutputStream(cliente.getOutputStream());
-                        salidaContacto.writeObject(obtenerContactos());
-
-                        while (true){
-                            //Lógica para guardar los mensajes en el servidor
-                            BufferedReader entradaMensaje = new BufferedReader(new InputStreamReader(cliente.getInputStream()));
-
-                            //Leemos el JSON que nos envía el Remitente
-                            String packetJson;
-                            while((packetJson = entradaMensaje.readLine()) != null){
-                                Gson gson = new Gson();
-                                Mensaje mensaje = gson.fromJson(packetJson, Mensaje.class);
-
-                                //Guardamos el mensaje en la base de datos
-                                guardarMensaje(mensaje);
-                            }
-                        }
-
-                    } else{
-                        System.out.println("No se ha podido logear");
-                        ObjectOutputStream salida = new ObjectOutputStream(cliente.getOutputStream());
-                        salida.writeObject("false");
-                    }
-                } else {
-                    //Comprobar primero si el correo no está utilizado por ningún usuario
-                    boolean correoUsed = comprobarCorreo(datos.get("correo"));
-
-                    if (!correoUsed){
-                        //Se registra al usuario y vuelve a esperar a que se logee
-                        boolean registeredUser = registrarUsuario(datos.get("nombre"), datos.get("correo"), datos.get("password"));
-
-                        if (registeredUser) {
-                            ObjectOutputStream salida = new ObjectOutputStream(cliente.getOutputStream());
+                switch (peticion) {
+                    case "login":
+                        boolean loginSuccess = comprobarLogin(datos.get("correo"), datos.get("password"));
+                        if (loginSuccess) {
                             salida.writeObject("true");
                         } else {
-                            ObjectOutputStream salida = new ObjectOutputStream(cliente.getOutputStream());
                             salida.writeObject("false");
                         }
-                    } else {
-                        ObjectOutputStream salida = new ObjectOutputStream(cliente.getOutputStream());
-                        salida.writeObject("false");
-                    }
+                        break;
+
+                    case "contactos":
+                        // Procesa los contactos
+                        ObjectOutputStream salidaContactos = new ObjectOutputStream(cliente.getOutputStream());
+                        ListaUsuarios listaUsuarios = new ListaUsuarios(obtenerContactos());
+                        Gson gsonContactos = new Gson();
+                        String json = gsonContactos.toJson(listaUsuarios);
+                        salidaContactos.writeObject(json);
+                        break;
+
+                    case "register":
+                        boolean correoUsed = comprobarCorreo(datos.get("correo"));
+                        if (!correoUsed) {
+                            boolean registeredUser = registrarUsuario(datos.get("nombre"), datos.get("correo"), datos.get("password"));
+                            salida.writeObject(registeredUser ? "true" : "false");
+                        } else {
+                            salida.writeObject("false");
+                        }
+                        break;
+
+                    case "mensaje":
+                        // Procesa los mensajes
+                        BufferedReader entradaMensaje = new BufferedReader(new InputStreamReader(cliente.getInputStream()));
+                        String packetJson;
+                        while ((packetJson = entradaMensaje.readLine()) != null) {
+                            Gson gson = new Gson();
+                            Mensaje mensaje = gson.fromJson(packetJson, Mensaje.class);
+                            guardarMensaje(mensaje);
+                        }
+                        break;
                 }
+
+                // Cierra los flujos y el socket
+                salida.close();
+                entrada.close();
+                cliente.close();
             }
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            System.out.println(e);
         }
     }
 
@@ -259,10 +244,4 @@ public class Main {
             return null;
         }
     }
-
-
-
-
-
-
 }
