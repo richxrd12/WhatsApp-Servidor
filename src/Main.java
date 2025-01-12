@@ -39,10 +39,19 @@ public class Main {
 
                 switch (peticion) {
                     case "login":
-                        boolean loginSuccess = comprobarLogin(datos.get("correo"), datos.get("password"));
+                        int login = comprobarLogin(datos.get("correo"), datos.get("password"));
 
-                        if (loginSuccess) {
-                            salida.writeObject("true");
+                        salida.writeObject(String.valueOf(login));
+                        salida.flush();
+
+                        break;
+
+                    case "register":
+                        boolean correoUsed = comprobarCorreo(datos.get("correo"));
+                        if (!correoUsed) {
+                            boolean registeredUser = registrarUsuario(datos.get("nombre"), datos.get("estado"),
+                                    datos.get("correo"), datos.get("password"));
+                            salida.writeObject(registeredUser ? "true" : "false");
                         } else {
                             salida.writeObject("false");
                         }
@@ -63,22 +72,16 @@ public class Main {
 
                         break;
 
-                    case "register":
-                        boolean correoUsed = comprobarCorreo(datos.get("correo"));
-                        if (!correoUsed) {
-                            boolean registeredUser = registrarUsuario(datos.get("nombre"), datos.get("estado"),
-                                    datos.get("correo"), datos.get("password"));
-                            salida.writeObject(registeredUser ? "true" : "false");
-                        } else {
-                            salida.writeObject("false");
-                        }
+                    case "peticion-mensajes":
 
-                        salida.flush();
+                        ArrayList<Mensaje> mensajes = obtenerMensajes(Integer.parseInt(datos.get("idCliente")),
+                                Integer.parseInt(datos.get("idContacto")));
 
-                        break;
+                        System.out.println(datos.get("idCliente"));
+                        System.out.println(datos.get("idContacto"));
 
-                    case "mensaje":
-                        // Procesa los mensajes
+                    case "envio-mensaje":
+                        /****             ESTÁ MAL           *****/
                         BufferedReader entradaMensaje = new BufferedReader(new InputStreamReader(cliente.getInputStream()));
                         String packetJson;
                         while ((packetJson = entradaMensaje.readLine()) != null) {
@@ -99,7 +102,7 @@ public class Main {
 
 
 
-    public static boolean comprobarLogin(String correo, String password){
+    public static int comprobarLogin(String correo, String password){
         String bd = "whatsapp";
         String url = "jdbc:mysql://localhost:3306/";
         String user = "root";
@@ -121,11 +124,12 @@ public class Main {
             ResultSet resultSet = preparedStatement.executeQuery();
 
             if (resultSet.next()){
+                int id = resultSet.getInt("id");
                 connection.close();
-                return true;
+                return id;
             }else{
                 connection.close();
-                return false;
+                return 0;
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -147,8 +151,8 @@ public class Main {
             PreparedStatement preparedStatement = connection.prepareStatement(insertQuery);
 
             preparedStatement.setString(1, mensaje.getMensaje());
-            preparedStatement.setInt(2, mensaje.getDestinatario().getId());
-            preparedStatement.setInt(3, mensaje.getRemitente().getId());
+            preparedStatement.setInt(2, mensaje.getDestinatario());
+            preparedStatement.setInt(3, mensaje.getRemitente());
             preparedStatement.setString(4, mensaje.getFecha());
 
             int rowsInserted = preparedStatement.executeUpdate();
@@ -260,6 +264,46 @@ public class Main {
                         resultSet.getString("password")));
             }
             return usuarios;
+
+        }catch (Exception e){
+            System.out.println(e);
+            return null;
+        }
+    }
+
+    public static ArrayList<Mensaje> obtenerMensajes(int idCliente, int idContacto){
+        ArrayList<Mensaje> mensajes = new ArrayList<>();
+
+        String bd = "whatsapp";
+        String url = "jdbc:mysql://localhost:3306/";
+        String user = "root";
+        String pass = "1234";
+        String driver = "com.mysql.cj.jdbc.Driver";
+        Connection connection;
+
+        final String SELECT_QUERY = "SELECT id, mensaje, idDestinatario, idRemitente, fecha FROM mensajes " +
+                "WHERE idDestinatario = ? AND idRemitente = ? OR idDestinatario = ? AND idRemitente = ? " +
+                "ORDERY BY fecha ASC;";
+
+        try {
+            Class.forName(driver);
+            connection = DriverManager.getConnection(url+bd, user, pass);
+
+            PreparedStatement preparedStatement = connection.prepareStatement(SELECT_QUERY);
+
+            preparedStatement.setInt(1, idCliente);
+            preparedStatement.setInt(2, idContacto);
+            preparedStatement.setInt(3, idContacto);
+            preparedStatement.setInt(4, idCliente);
+
+            ResultSet resultSet = preparedStatement.executeQuery();
+
+            while (resultSet.next()){
+                mensajes.add(new Mensaje(resultSet.getInt("id"),
+                        resultSet.getInt("idRemitente"), resultSet.getInt("idDestinatario"),
+                        resultSet.getString("mensaje"), resultSet.getString("fecha")));
+            }
+            return mensajes;
 
         }catch (Exception e){
             System.out.println(e);
