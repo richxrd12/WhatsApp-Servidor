@@ -1,4 +1,5 @@
 import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -54,10 +55,8 @@ public class Main {
                         // Procesa los contactos
                         ListaUsuarios listaUsuarios = new ListaUsuarios(obtenerContactos());
 
-                        Gson gsonContactos = new Gson();
+                        Gson gsonContactos = new GsonBuilder().setPrettyPrinting().create();
                         String json = gsonContactos.toJson(listaUsuarios);
-
-                        System.out.println(json);
 
                         salida.writeObject(json);
                         salida.flush();
@@ -67,7 +66,8 @@ public class Main {
                     case "register":
                         boolean correoUsed = comprobarCorreo(datos.get("correo"));
                         if (!correoUsed) {
-                            boolean registeredUser = registrarUsuario(datos.get("nombre"), datos.get("correo"), datos.get("password"));
+                            boolean registeredUser = registrarUsuario(datos.get("nombre"), datos.get("estado"),
+                                    datos.get("correo"), datos.get("password"));
                             salida.writeObject(registeredUser ? "true" : "false");
                         } else {
                             salida.writeObject("false");
@@ -166,14 +166,14 @@ public class Main {
         }
     }
 
-    public static boolean registrarUsuario(String nombre, String correo, String password){
+    public static boolean registrarUsuario(String nombre, String estado, String correo, String password){
         String bd = "whatsapp";
         String url = "jdbc:mysql://localhost:3306/";
         String user = "root";
         String pass = "1234";
         String driver = "com.mysql.cj.jdbc.Driver";
 
-        String insertQuery = "INSERT INTO usuarios (nombre, correo, password) VALUES (?, ?, ?)";
+        String insertQuery = "INSERT INTO usuarios (nombre, estado, correo, password) VALUES (?, ?, ?, ?)";
         try{
             Class.forName(driver);
             Connection connection = DriverManager.getConnection(url+bd, user, pass);
@@ -181,8 +181,9 @@ public class Main {
             PreparedStatement preparedStatement = connection.prepareStatement(insertQuery);
 
             preparedStatement.setString(1, nombre);
-            preparedStatement.setString(2, correo);
-            preparedStatement.setString(3, password);
+            preparedStatement.setString(2, estado);
+            preparedStatement.setString(3, correo);
+            preparedStatement.setString(4, password);
 
             int rowsInserted = preparedStatement.executeUpdate();
 
@@ -243,7 +244,7 @@ public class Main {
         String driver = "com.mysql.cj.jdbc.Driver";
         Connection connection;
 
-        final String SELECT_QUERY = "SELECT id, nombre, correo, password FROM usuarios";
+        final String SELECT_QUERY = "SELECT id, nombre, estado, correo, password FROM usuarios";
 
         try {
             Class.forName(driver);
@@ -255,7 +256,8 @@ public class Main {
 
             while (resultSet.next()){
                 usuarios.add(new Usuario(resultSet.getInt("id"), resultSet.getString("nombre"),
-                        resultSet.getString("correo"), resultSet.getString("password")));
+                        resultSet.getString("estado"), resultSet.getString("correo"),
+                        resultSet.getString("password")));
             }
             return usuarios;
 
