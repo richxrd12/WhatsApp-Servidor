@@ -9,20 +9,28 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         final int PORT = 5000;
         Map<String, Socket> conectados = new HashMap<>();
 
-        System.out.println("Servidor escuchando en el puerto " + PORT);
+        ServerSocket serverSocket = new ServerSocket(PORT);
 
-        try (ServerSocket serverSocket = new ServerSocket(PORT)) {
+        while (true){
+            Socket cliente = serverSocket.accept(); // acepta cada nueva conexión
+            System.out.println("Cliente conectado: " + cliente.getInetAddress());
+
+            new Thread(() -> Main.manejarCliente(cliente)).start();
+        }
+    }
+
+    public static void manejarCliente(Socket cliente) {
+        try {
+
+            // Crea los flujos de entrada y salida una sola vez por cliente
+            ObjectInputStream entrada = new ObjectInputStream(cliente.getInputStream());
+            ObjectOutputStream salida = new ObjectOutputStream(cliente.getOutputStream());
+
             while (true) {
-                Socket cliente = serverSocket.accept(); // acepta cada nueva conexión
-                System.out.println("Cliente conectado: " + cliente.getInetAddress());
-
-                // Crea los flujos de entrada y salida una sola vez por cliente
-                ObjectInputStream entrada = new ObjectInputStream(cliente.getInputStream());
-                ObjectOutputStream salida = new ObjectOutputStream(cliente.getOutputStream());
 
                 // Escuchar y procesar solicitudes
                 Map<String, String> datos = (Map<String, String>) entrada.readObject();
@@ -31,20 +39,29 @@ public class Main {
                 switch (peticion) {
                     case "login":
                         boolean loginSuccess = comprobarLogin(datos.get("correo"), datos.get("password"));
+
                         if (loginSuccess) {
                             salida.writeObject("true");
                         } else {
                             salida.writeObject("false");
                         }
+
+                        salida.flush();
+
                         break;
 
                     case "contactos":
                         // Procesa los contactos
-                        ObjectOutputStream salidaContactos = new ObjectOutputStream(cliente.getOutputStream());
                         ListaUsuarios listaUsuarios = new ListaUsuarios(obtenerContactos());
+
                         Gson gsonContactos = new Gson();
                         String json = gsonContactos.toJson(listaUsuarios);
-                        salidaContactos.writeObject(json);
+
+                        System.out.println(json);
+
+                        salida.writeObject(json);
+                        salida.flush();
+
                         break;
 
                     case "register":
@@ -55,6 +72,9 @@ public class Main {
                         } else {
                             salida.writeObject("false");
                         }
+
+                        salida.flush();
+
                         break;
 
                     case "mensaje":
@@ -66,18 +86,18 @@ public class Main {
                             Mensaje mensaje = gson.fromJson(packetJson, Mensaje.class);
                             guardarMensaje(mensaje);
                         }
+
+                        salida.flush();
+
                         break;
                 }
-
-                // Cierra los flujos y el socket
-                salida.close();
-                entrada.close();
-                cliente.close();
             }
         } catch (Exception e) {
             System.out.println(e);
         }
     }
+
+
 
     public static boolean comprobarLogin(String correo, String password){
         String bd = "whatsapp";

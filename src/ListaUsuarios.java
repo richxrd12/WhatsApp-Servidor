@@ -1,10 +1,14 @@
 import java.util.ArrayList;
 
 public class ListaUsuarios {
-    private ArrayList<Usuario> usuarios;
+    public ArrayList<Usuario> usuarios;
 
     public ListaUsuarios(ArrayList<Usuario> usuarios) {
         this.usuarios = usuarios;
+    }
+
+    public ListaUsuarios() {
+        this.usuarios = new ArrayList<>();
     }
 
     public ArrayList<Usuario> getUsuarios() {

@@ -5,6 +5,10 @@ public class Usuario{
     private String correo;
     private String password;
 
+    public Usuario() {
+
+    }
+
     public Usuario(int id, String nombre, String correo, String password) {
         this.id = id;
         this.nombre = nombre;
