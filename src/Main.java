@@ -283,7 +283,7 @@ public class Main {
 
         final String SELECT_QUERY = "SELECT id, mensaje, idDestinatario, idRemitente, fecha FROM mensajes " +
                 "WHERE idDestinatario = ? AND idRemitente = ? OR idDestinatario = ? AND idRemitente = ? " +
-                "ORDERY BY fecha ASC;";
+                "ORDER BY fecha ASC;";
 
         try {
             Class.forName(driver);

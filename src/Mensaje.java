@@ -58,4 +58,14 @@ public class Mensaje {
         this.fecha = fecha;
     }
 
+    @Override
+    public String toString() {
+        return "Mensaje{" +
+                "id=" + id +
+                ", idRemitente=" + idRemitente +
+                ", idDestinatario=" + idDestinatario +
+                ", mensaje='" + mensaje + '\'' +
+                ", fecha='" + fecha + '\'' +
+                '}';
+    }
 }
