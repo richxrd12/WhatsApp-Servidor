@@ -104,8 +104,6 @@ public class Main {
         }
     }
 
-
-
     public static int comprobarLogin(String correo, String password){
         String bd = "whatsapp";
         String url = "jdbc:mysql://localhost:3306/";
