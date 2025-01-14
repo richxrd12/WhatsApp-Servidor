@@ -1,7 +1,9 @@
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.reflect.TypeToken;
 
 import java.io.*;
+import java.lang.reflect.Type;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.*;
@@ -73,13 +75,15 @@ public class Main {
                         break;
 
                     case "peticion-mensajes":
-
                         ArrayList<Mensaje> mensajes = obtenerMensajes(Integer.parseInt(datos.get("idCliente")),
                                 Integer.parseInt(datos.get("idContacto")));
 
-                        System.out.println(datos.get("idCliente"));
-                        System.out.println(datos.get("idContacto"));
+                        Gson gsonMensajes = new GsonBuilder().setPrettyPrinting().create();
+                        String jsonMensajes = gsonMensajes.toJson(mensajes);
 
+                        salida.writeObject(jsonMensajes);
+
+                        salida.flush();
                     case "envio-mensaje":
                         /****             ESTÁ MAL           *****/
                         BufferedReader entradaMensaje = new BufferedReader(new InputStreamReader(cliente.getInputStream()));
@@ -303,6 +307,7 @@ public class Main {
                         resultSet.getInt("idRemitente"), resultSet.getInt("idDestinatario"),
                         resultSet.getString("mensaje"), resultSet.getString("fecha")));
             }
+
             return mensajes;
 
         }catch (Exception e){
