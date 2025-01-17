@@ -33,6 +33,8 @@ public class Main {
             ObjectInputStream entrada = new ObjectInputStream(cliente.getInputStream());
             ObjectOutputStream salida = new ObjectOutputStream(cliente.getOutputStream());
 
+            int idCliente = 0;
+            int idContacto = 0;
             while (true) {
 
                 // Escuchar y procesar solicitudes
@@ -41,9 +43,9 @@ public class Main {
 
                 switch (peticion) {
                     case "login":
-                        int login = comprobarLogin(datos.get("correo"), datos.get("password"));
+                        idCliente = comprobarLogin(datos.get("correo"), datos.get("password"));
 
-                        salida.writeObject(String.valueOf(login));
+                        salida.writeObject(String.valueOf(idCliente));
                         salida.flush();
 
                         break;
@@ -75,8 +77,10 @@ public class Main {
                         break;
 
                     case "peticion-mensajes":
-                        ArrayList<Mensaje> mensajes = obtenerMensajes(Integer.parseInt(datos.get("idCliente")),
-                                Integer.parseInt(datos.get("idContacto")));
+                        idContacto = Integer.parseInt(datos.get("idContacto"));
+
+                        System.out.println(idCliente + "cliente, contacto: " + idContacto);
+                        ArrayList<Mensaje> mensajes = obtenerMensajes(idCliente, idContacto);
 
                         Gson gsonMensajes = new GsonBuilder().setPrettyPrinting().create();
                         String jsonMensajes = gsonMensajes.toJson(mensajes);
@@ -84,15 +88,16 @@ public class Main {
                         salida.writeObject(jsonMensajes);
 
                         salida.flush();
+
+                        break;
                     case "envio-mensaje":
-                        /****             ESTÁ MAL           *****/
-                        BufferedReader entradaMensaje = new BufferedReader(new InputStreamReader(cliente.getInputStream()));
-                        String packetJson;
-                        while ((packetJson = entradaMensaje.readLine()) != null) {
-                            Gson gson = new Gson();
-                            Mensaje mensaje = gson.fromJson(packetJson, Mensaje.class);
-                            guardarMensaje(mensaje);
-                        }
+
+                        String mensajeEnviado = datos.get("mensaje");
+                        String fecha = datos.get("fecha");
+
+                        Mensaje mensaje = new Mensaje(0, idCliente, idContacto, mensajeEnviado, fecha);
+
+                        guardarMensaje(mensaje);
 
                         salida.flush();
 
