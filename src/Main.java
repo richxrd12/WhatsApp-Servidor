@@ -12,7 +12,7 @@ import java.util.Map;
 public class Main {
     public static void main(String[] args) throws IOException {
         final int PORT = 5000;
-        Map<String, Socket> conectados = new HashMap<>();
+        Map<String, ObjectOutputStream> conectados = new HashMap<>();
 
         ServerSocket serverSocket = new ServerSocket(PORT);
 
@@ -24,12 +24,12 @@ public class Main {
         }
     }
 
-    public static void manejarCliente(Socket cliente, Map<String, Socket> conectados) {
+    public static void manejarCliente(Socket cliente, Map<String, ObjectOutputStream> conectados) {
         try {
 
             // Crea los flujos de entrada y salida una sola vez por cliente
-            ObjectInputStream entrada = new ObjectInputStream(cliente.getInputStream());
             ObjectOutputStream salida = new ObjectOutputStream(cliente.getOutputStream());
+            ObjectInputStream entrada = new ObjectInputStream(cliente.getInputStream());
 
             int idCliente = 0;
             int idContacto = 0;
@@ -43,10 +43,10 @@ public class Main {
                     case "login":
                         idCliente = comprobarLogin(datos.get("correo"), datos.get("password"));
 
+                        conectados.put(String.valueOf(idCliente), salida);
+
                         salida.writeObject(String.valueOf(idCliente));
                         salida.flush();
-
-                        conectados.put(String.valueOf(idCliente), cliente);
 
                         break;
 
@@ -79,6 +79,7 @@ public class Main {
                     case "peticion-mensajes":
                         idContacto = Integer.parseInt(datos.get("idContacto"));
 
+                        System.out.println(idCliente + "cliente, contacto: " + idContacto);
                         ArrayList<Mensaje> mensajes = obtenerMensajes(idCliente, idContacto);
 
                         Gson gsonMensajes = new GsonBuilder().setPrettyPrinting().create();
@@ -99,19 +100,14 @@ public class Main {
 
                         guardarMensaje(mensaje);
 
-                        Socket contacto = conectados.get(String.valueOf(idContacto));
+                        ObjectOutputStream contacto = conectados.get(String.valueOf(idContacto));
 
                         if (contacto != null){
+                            contacto.writeObject("mensaje-recibido");
 
-                            OutputStream outputStream = contacto.getOutputStream();
-                            ObjectOutputStream streamContacto = new ObjectOutputStream(outputStream);
-
-                            String respuesta = "mensaje-recibido";
-
-                            streamContacto.writeObject(respuesta);
-
-                            streamContacto.flush();
+                            contacto.flush();
                         }
+
                         salida.flush();
 
                         break;
