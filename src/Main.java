@@ -20,11 +20,11 @@ public class Main {
             Socket cliente = serverSocket.accept(); // acepta cada nueva conexión
             System.out.println("Cliente conectado: " + cliente.getInetAddress());
 
-            new Thread(() -> Main.manejarCliente(cliente)).start();
+            new Thread(() -> Main.manejarCliente(cliente, conectados)).start();
         }
     }
 
-    public static void manejarCliente(Socket cliente) {
+    public static void manejarCliente(Socket cliente, Map<String, Socket> conectados) {
         try {
 
             // Crea los flujos de entrada y salida una sola vez por cliente
@@ -45,6 +45,8 @@ public class Main {
 
                         salida.writeObject(String.valueOf(idCliente));
                         salida.flush();
+
+                        conectados.put(String.valueOf(idCliente), cliente);
 
                         break;
 
@@ -77,7 +79,6 @@ public class Main {
                     case "peticion-mensajes":
                         idContacto = Integer.parseInt(datos.get("idContacto"));
 
-                        System.out.println(idCliente + "cliente, contacto: " + idContacto);
                         ArrayList<Mensaje> mensajes = obtenerMensajes(idCliente, idContacto);
 
                         Gson gsonMensajes = new GsonBuilder().setPrettyPrinting().create();
@@ -98,6 +99,19 @@ public class Main {
 
                         guardarMensaje(mensaje);
 
+                        Socket contacto = conectados.get(String.valueOf(idContacto));
+
+                        if (contacto != null){
+
+                            OutputStream outputStream = contacto.getOutputStream();
+                            ObjectOutputStream streamContacto = new ObjectOutputStream(outputStream);
+
+                            String respuesta = "mensaje-recibido";
+
+                            streamContacto.writeObject(respuesta);
+
+                            streamContacto.flush();
+                        }
                         salida.flush();
 
                         break;
