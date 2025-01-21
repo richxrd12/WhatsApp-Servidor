@@ -1,9 +1,7 @@
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.reflect.TypeToken;
 
 import java.io.*;
-import java.lang.reflect.Type;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.*;
@@ -90,6 +88,7 @@ public class Main {
                         salida.flush();
 
                         break;
+
                     case "envio-mensaje":
 
                         String mensajeEnviado = datos.get("mensaje");
