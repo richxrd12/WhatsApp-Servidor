@@ -12,27 +12,48 @@ import java.util.Map;
 public class Main {
     public static void main(String[] args) throws IOException {
         final int PORT = 5000;
+        final int PORT_ESCUCHA = 5001;
+
         Map<String, ObjectOutputStream> conectados = new HashMap<>();
 
         ServerSocket serverSocket = new ServerSocket(PORT);
+        ServerSocket serverEscucha = new ServerSocket(PORT_ESCUCHA);
 
         while (true){
-            Socket cliente = serverSocket.accept(); // acepta cada nueva conexión
+            Socket cliente = serverSocket.accept();
+
+            //Le mandamos un código de éxito para que no se quede el hilo bloqueado
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(cliente.getOutputStream());
+            objectOutputStream.writeObject("Conexión establecida");
+            objectOutputStream.flush();
+
+            Socket clienteEscucha = serverEscucha.accept();
+
+            //Le mandamos un código de éxito para que no se quede bloqueado el hilo del otro servidor
+            ObjectOutputStream outputStreamEscucha = new ObjectOutputStream(clienteEscucha.getOutputStream());
+            outputStreamEscucha.writeObject("Conexión establecida");
+            outputStreamEscucha.flush();
+
             System.out.println("Cliente conectado: " + cliente.getInetAddress());
 
-            new Thread(() -> Main.manejarCliente(cliente, conectados)).start();
+            new Thread(() -> Main.manejarCliente(cliente, clienteEscucha, conectados, objectOutputStream,
+                    outputStreamEscucha)).start();
         }
     }
 
-    public static void manejarCliente(Socket cliente, Map<String, ObjectOutputStream> conectados) {
+    public static void manejarCliente(Socket cliente, Socket clienteEscucha, Map<String, ObjectOutputStream> conectados,
+                                      ObjectOutputStream salida, ObjectOutputStream salidaEscucha) {
         try {
 
             // Crea los flujos de entrada y salida una sola vez por cliente
-            ObjectOutputStream salida = new ObjectOutputStream(cliente.getOutputStream());
             ObjectInputStream entrada = new ObjectInputStream(cliente.getInputStream());
+
+            //Crea los flujos de entrada y salida de la escucha una vez por cliente
+            ObjectInputStream entradaEscucha = new ObjectInputStream(clienteEscucha.getInputStream());
 
             int idCliente = 0;
             int idContacto = 0;
+
             while (true) {
 
                 // Escuchar y procesar solicitudes
@@ -43,7 +64,7 @@ public class Main {
                     case "login":
                         idCliente = comprobarLogin(datos.get("correo"), datos.get("password"));
 
-                        conectados.put(String.valueOf(idCliente), salida);
+                        conectados.put(String.valueOf(idCliente), salidaEscucha);
 
                         salida.writeObject(String.valueOf(idCliente));
                         salida.flush();
@@ -100,12 +121,12 @@ public class Main {
 
                         guardarMensaje(mensaje);
 
-                        ObjectOutputStream contacto = conectados.get(String.valueOf(idContacto));
+                        ObjectOutputStream contactoEscucha = conectados.get(String.valueOf(idContacto));
 
-                        if (contacto != null){
-                            contacto.writeObject("mensaje-recibido");
+                        if (contactoEscucha != null){
+                            contactoEscucha.writeObject("mensaje-recibido");
 
-                            contacto.flush();
+                            contactoEscucha.flush();
                         }
 
                         salida.flush();
