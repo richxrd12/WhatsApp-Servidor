@@ -5,17 +5,19 @@ public class Usuario{
     private String estado;
     private String correo;
     private String password;
+    private boolean isOnline;
 
     public Usuario() {
 
     }
 
-    public Usuario(int id, String nombre, String estado, String correo, String password) {
+    public Usuario(int id, String nombre, String estado, String correo, String password, boolean isOnline) {
         this.id = id;
         this.nombre = nombre;
         this.estado = estado;
         this.correo = correo;
         this.password = password;
+        this.isOnline = isOnline;
     }
 
     public int getId() {
@@ -58,4 +60,11 @@ public class Usuario{
         this.password = password;
     }
 
+    public boolean isOnline() {
+        return isOnline;
+    }
+
+    public void setOnline(boolean online) {
+        isOnline = online;
+    }
 }

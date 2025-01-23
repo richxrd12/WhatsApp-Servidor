@@ -62,7 +62,7 @@ public class Main {
 
                 switch (peticion) {
                     case "login":
-                        idCliente = comprobarLogin(datos.get("correo"), datos.get("password"));
+                        idCliente = comprobarLogin(datos.get("usuario"), datos.get("password"));
 
                         conectados.put(String.valueOf(idCliente), salidaEscucha);
 
@@ -72,10 +72,10 @@ public class Main {
                         break;
 
                     case "register":
-                        boolean correoUsed = comprobarCorreo(datos.get("correo"));
+                        boolean correoUsed = comprobarUsuario(datos.get("correo"));
                         if (!correoUsed) {
                             boolean registeredUser = registrarUsuario(datos.get("nombre"), datos.get("estado"),
-                                    datos.get("correo"), datos.get("password"));
+                                    datos.get("usuario"), datos.get("password"));
                             salida.writeObject(registeredUser ? "true" : "false");
                         } else {
                             salida.writeObject("false");
@@ -87,7 +87,7 @@ public class Main {
 
                     case "contactos":
                         // Procesa los contactos
-                        ListaUsuarios listaUsuarios = new ListaUsuarios(obtenerContactos());
+                        ListaUsuarios listaUsuarios = new ListaUsuarios(obtenerContactos(conectados));
 
                         Gson gsonContactos = new GsonBuilder().setPrettyPrinting().create();
                         String json = gsonContactos.toJson(listaUsuarios);
@@ -139,7 +139,7 @@ public class Main {
         }
     }
 
-    public static int comprobarLogin(String correo, String password){
+    public static int comprobarLogin(String usuario, String password){
         String bd = "whatsapp";
         String url = "jdbc:mysql://localhost:3306/";
         String user = "root";
@@ -147,7 +147,7 @@ public class Main {
         String driver = "com.mysql.cj.jdbc.Driver";
         Connection connection;
 
-        final String SELECT_QUERY = "SELECT * FROM usuarios where correo = ? and password = ?";
+        final String SELECT_QUERY = "SELECT * FROM usuarios where usuario = ? and password = ?";
 
         try{
             Class.forName(driver);
@@ -155,7 +155,7 @@ public class Main {
 
             PreparedStatement preparedStatement = connection.prepareStatement(SELECT_QUERY);
 
-            preparedStatement.setString(1, correo);
+            preparedStatement.setString(1, usuario);
             preparedStatement.setString(2, password);
 
             ResultSet resultSet = preparedStatement.executeQuery();
@@ -207,14 +207,14 @@ public class Main {
         }
     }
 
-    public static boolean registrarUsuario(String nombre, String estado, String correo, String password){
+    public static boolean registrarUsuario(String nombre, String estado, String usuario, String password){
         String bd = "whatsapp";
         String url = "jdbc:mysql://localhost:3306/";
         String user = "root";
         String pass = "1234";
         String driver = "com.mysql.cj.jdbc.Driver";
 
-        String insertQuery = "INSERT INTO usuarios (nombre, estado, correo, password) VALUES (?, ?, ?, ?)";
+        String insertQuery = "INSERT INTO usuarios (nombre, estado, usuario, password) VALUES (?, ?, ?, ?)";
         try{
             Class.forName(driver);
             Connection connection = DriverManager.getConnection(url+bd, user, pass);
@@ -223,7 +223,7 @@ public class Main {
 
             preparedStatement.setString(1, nombre);
             preparedStatement.setString(2, estado);
-            preparedStatement.setString(3, correo);
+            preparedStatement.setString(3, usuario);
             preparedStatement.setString(4, password);
 
             int rowsInserted = preparedStatement.executeUpdate();
@@ -243,7 +243,7 @@ public class Main {
         }
     }
 
-    public static boolean comprobarCorreo(String correo){
+    public static boolean comprobarUsuario(String correo){
         String bd = "whatsapp";
         String url = "jdbc:mysql://localhost:3306/";
         String user = "root";
@@ -251,7 +251,7 @@ public class Main {
         String driver = "com.mysql.cj.jdbc.Driver";
         Connection connection;
 
-        final String SELECT_QUERY = "SELECT * FROM usuarios where correo = ?";
+        final String SELECT_QUERY = "SELECT * FROM usuarios where usuario = ?";
 
         try{
             Class.forName(driver);
@@ -275,7 +275,7 @@ public class Main {
         }
     }
 
-    public static ArrayList<Usuario> obtenerContactos(){
+    public static ArrayList<Usuario> obtenerContactos(Map<String, ObjectOutputStream> conectados){
         ArrayList<Usuario> usuarios = new ArrayList<>();
 
         String bd = "whatsapp";
@@ -283,9 +283,10 @@ public class Main {
         String user = "root";
         String pass = "1234";
         String driver = "com.mysql.cj.jdbc.Driver";
+        boolean isOnline = false;
         Connection connection;
 
-        final String SELECT_QUERY = "SELECT id, nombre, estado, correo, password FROM usuarios";
+        final String SELECT_QUERY = "SELECT id, nombre, estado, usuario, password FROM usuarios";
 
         try {
             Class.forName(driver);
@@ -296,9 +297,14 @@ public class Main {
             ResultSet resultSet = preparedStatement.executeQuery();
 
             while (resultSet.next()){
+                if (conectados.get(String.valueOf(resultSet.getInt("id"))) != null){
+                    isOnline = true;
+                } else{
+                    isOnline = false;
+                }
                 usuarios.add(new Usuario(resultSet.getInt("id"), resultSet.getString("nombre"),
-                        resultSet.getString("estado"), resultSet.getString("correo"),
-                        resultSet.getString("password")));
+                        resultSet.getString("estado"), resultSet.getString("usuario"),
+                        resultSet.getString("password"), isOnline));
             }
             return usuarios;
 
