@@ -62,6 +62,8 @@ public class Main {
 
                 switch (peticion) {
                     case "login":
+                        conectados.remove(String.valueOf(idCliente));
+
                         idCliente = comprobarLogin(datos.get("usuario"), datos.get("password"));
 
                         conectados.put(String.valueOf(idCliente), salidaEscucha);
